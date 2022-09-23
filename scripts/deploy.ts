@@ -28,14 +28,15 @@ async function main() {
 }
 
 // async function verify(contractAddress, args) {
-const verify = async (contractAddress: string, args: any[]) => {
+// const verify = async (contractAddress: string, args: any[]) => {
+const verify = async (contractAddress, args) => {
     // define a function without keyword function (more like define variable); having your function be a variable
     console.log("Verifying contract...")
     try {
         // the bite code may already be verified by etherscan, so we need try
         await run("verify:verify", {
             address: contractAddress,
-            constructorArgsParams: args,
+            constructorArguments: args,
         })
         console.log("Verified!")
     } catch (e: any) {
