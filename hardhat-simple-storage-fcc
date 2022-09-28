@@ -1,0 +1,83 @@
+const { network } = require("hardhat")
+
+// Define how to deploy the FundMe contract
+
+//import
+// no main function and will not call it
+// when we run hardhat deploy, it will call the function that we specify in this script
+
+//main function
+// we will export the deployFunc as the default function for hardhat-deploy to look for
+
+// function deployFunc(hre) {
+//     console.log("Hi!")
+//     hre.getNameAccounts()
+//     hre.deployments
+// }
+
+// module.exports.default = deployFunc
+
+// use a nameless synchronous function(anonymous function)
+// whenever we run a deploy script, hardhat deploy automatically calls this function and pass the hardhat object into it
+// module.exports =async (hre) => {const {getNameAccounts, deployments} = hre
+// pull these exact variables from hre; hre.getNameAccounts, hre.deployments
+
+// same as above;this a asynchronous nameles function
+
+const { networkConfig, developmentChains } = require("../helper-hardhat-config")
+// const { network } = require("hardhat")  // should be commented out or it will throws error like this:
+/*
+An unexpected error occurred:
+Error: ERROR processing skip func of /Users/jieyingchou/hardhat-found-me-fcc/deploy/01-deploy-fund-me.js:
+/Users/jieyingchou/hardhat-found-me-fcc/deploy/01-deploy-fund-me.js:28
+const { network } = require("hardhat")
+        ^
+SyntaxError: Identifier 'network' has already been declared
+*/
+// solodity can recognize the "network" without this
+
+// const helperConfig = require("../helper-hardhat-config")
+// const networkConfig = helperConfig.networkConfig
+const { verify } = require("../utils/verify")
+
+module.exports = async ({ getNamedAccounts, deployments }) => {
+    const { deploy, log } = deployments // grab two functions out of deployment object
+    const { deployer } = await getNamedAccounts()
+    // grab deployer from getNameAccounts() function, it is a way for us to get named accounts
+    const chainId = network.config.chainId
+
+    // If chainId is X, use address Y
+    // const ethUsdPriceAddress = networkConfig[chainId]["ethUsdPriceFeed"]
+    let ethUsdPriceAddress // we can update it
+    if (developmentChains.includes(network.name)) {
+        const ethUsdAggregator = await deployments.get("MockV3Aggregator")
+        ethUsdPriceAddress = ethUsdAggregator.address
+    } else {
+        ethUsdPriceAddress = networkConfig[chainId]["ethUsdPriceFeed"]
+    } // We can flip between local chain, mainnet chain, testnet chain
+
+    // Without the price feed contract (local network), we deploy a minimal version of it for our local testing
+
+    // well what happens when we want to change chains? -> change interface also, which we NOT hard code the address
+    // when going for localhost or hardhat we want to use a mock.
+    const args = [ethUsdPriceAddress]
+    const fundMe = await deploy("FundMe", {
+        // a list of overrides
+        from: deployer,
+        args: args, // put price feed address
+        // pass the args to constructor
+        log: true, // with cunstom log here, no need console.log
+        waitConfirmations: network.config.blockConfirmations || 1,
+    })
+    if (
+        !developmentChains.includes(network.name) &&
+        process.env.ETHERSCAN_API_KEY
+    ) {
+        await verify(fundMe.address, args)
+    }
+    log("------------------------------------------")
+}
+
+module.exports.tags = ["all", "fundme"]
+
+// calling the main function
